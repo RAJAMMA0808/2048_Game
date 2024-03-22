@@ -1,3 +1,4 @@
+
 pipeline {
     agent any
     
@@ -27,8 +28,8 @@ pipeline {
         stage('Sonarqube Analysis') {
             steps {
                withSonarQubeEnv('sonar-server') {
-                   sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=2048_Game \
-                   -Dsonar.projectKey=2048_Game '''
+                   sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=Game \
+                   -Dsonar.projectKey=Game '''
                }
             }
         }
@@ -44,7 +45,33 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
+                
+              }
+           }
+
+stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh 'docker build -t 2048 .'
+                        sh 'docker tag 2048 raji0808/2048:latest'
+                        sh 'docker push raji0808/2048:latest'
+                    }
+                }
             }
         }
-    }
+        
+        stage('TRIVY IMAGE SCAN') {
+            steps {
+                sh 'trivy image raji0808/2048:latest > trivyimagereport.txt'
+
+                  }
+               }
+
+stage('Deploy to container'){
+            steps{
+                sh 'docker run -d --name 2048 -p 3000:3000 raji0808/2048:latest'
+            }
+        }
+     }
 }
